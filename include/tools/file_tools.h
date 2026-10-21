@@ -1,14 +1,5 @@
-                             
-  
-                                                                         
-                                                                        
-                           
-
 #pragma once
 #include "tools/tool.h"
-
-                                                    
-                                                                               
 class ReadFileTool : public Tool {
 public:
     ReadFileTool();
@@ -19,9 +10,6 @@ public:
 private:
     JsonValue schema_;
 };
-
-                                                                  
-                                                                           
 class WriteFileTool : public Tool {
 public:
     WriteFileTool();
@@ -32,10 +20,6 @@ public:
 private:
     JsonValue schema_;
 };
-
-                                                  
-                                                                 
-                                                                              
 class ListDirTool : public Tool {
 public:
     ListDirTool();

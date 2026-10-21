@@ -1,21 +1,8 @@
-                                             
-  
-                                                                        
-                                                                   
-                                                                    
-                                       
-  
-                                                        
-                                                                          
-                                                   
-
 #include "../mini_test.h"
-#include "../test_helpers.h"                                       
-
+#include "../test_helpers.h"
 #include "tools/calculator.h"
 #include "tools/tool_registry.h"
 #include "tools/workspace.h"
-
 #include <algorithm>
 #include <cstdio>
 #include <cmath>
@@ -23,12 +10,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-
 namespace fs = std::filesystem;
-
 namespace {
-
-                                                                       
 class NamedTool : public Tool {
 public:
     explicit NamedTool(std::string n) : n_(std::move(n)), schema_(JsonValue::object()) {}
@@ -38,9 +21,8 @@ public:
     ToolResult invoke(const JsonValue&, ToolContext&) override { return ToolResult::success(n_); }
 private:
     std::string n_;
-    JsonValue   schema_;                              
+    JsonValue   schema_;
 };
-
 class CountedTool : public NamedTool {
 public:
     CountedTool(std::string n, int* count) : NamedTool(std::move(n)), count_(count) {}
@@ -48,28 +30,21 @@ public:
 private:
     int* count_;
 };
-
-                                                                     
 bool eval(const std::string& expr, double* value, std::string* error) {
     std::vector<CalcToken> tokens;
     if (!calc_tokenize(expr, &tokens, error)) return false;
     return calc_evaluate(tokens, value, error);
 }
-
-}              
-
-                                                                            
-
+}
 TEST(reg_add_and_find) {
     ToolRegistry r;
     auto t = std::make_unique<NamedTool>("alpha");
-    Tool* raw = t.get();                                                             
+    Tool* raw = t.get();
     REQUIRE(r.add(std::move(t)));
     CHECK(r.size() == 1);
-    CHECK(r.find("alpha") == raw);                                        
+    CHECK(r.find("alpha") == raw);
     CHECK(r.find("beta") == nullptr);
 }
-
 TEST(reg_duplicate_keeps_original) {
     ToolRegistry r;
     auto first = std::make_unique<NamedTool>("alpha");
@@ -79,32 +54,28 @@ TEST(reg_duplicate_keeps_original) {
     CHECK(r.find("alpha") == original);
     CHECK(r.size() == 1);
 }
-
 TEST(ws_rejects_parent_escape) {
     TempDir d;
     Workspace ws(d.path());
     fs::path out;
     std::string reason;
-    REQUIRE(ws.resolve("notes/todo.txt", &out, &reason));                                 
+    REQUIRE(ws.resolve("notes/todo.txt", &out, &reason));
     CHECK(out == ws.root() / "notes" / "todo.txt");
     CHECK(!ws.resolve("../etc/passwd", &out, &reason));
     CHECK(!reason.empty());
 }
-
 TEST(calc_precedence) {
     double v = 0;
     std::string err;
     REQUIRE(eval("2 + 3 * 4", &v, &err));
     CHECK(v == 14);
 }
-
 TEST(calc_division_by_zero) {
     double v = 0;
     std::string err;
     CHECK(!eval("1 / 0", &v, &err));
     CHECK(err == "division by zero");
 }
-
 TEST(reg_empty_and_initial_buckets) {
     ToolRegistry r;
     CHECK(r.size() == 0);
@@ -112,14 +83,12 @@ TEST(reg_empty_and_initial_buckets) {
     CHECK(r.load_factor() == 0.0);
     CHECK(r.max_probe_length() == 0);
 }
-
 TEST(reg_null_rejected) {
     ToolRegistry r;
     std::unique_ptr<Tool> none;
     CHECK(!r.add(std::move(none)));
     CHECK(r.size() == 0);
 }
-
 TEST(reg_for_each_visits_each_once) {
     ToolRegistry r;
     REQUIRE(r.add(std::make_unique<NamedTool>("a")));
@@ -132,23 +101,20 @@ TEST(reg_for_each_visits_each_once) {
         CHECK(std::count(names.begin(), names.end(), n) == 1);
     }
 }
-
 TEST(reg_owned_tools_destroyed_once) {
     int destroyed = 0;
     {
         ToolRegistry r;
         REQUIRE(r.add(std::make_unique<CountedTool>("owned", &destroyed)));
         CHECK(!r.add(std::make_unique<CountedTool>("owned", &destroyed)));
-        CHECK(destroyed == 1);                                      
+        CHECK(destroyed == 1);
     }
-    CHECK(destroyed == 2);                                           
+    CHECK(destroyed == 2);
 }
-
 TEST(reg_hash_uses_order) {
     CHECK(ToolRegistry::hash("ab") != ToolRegistry::hash("ba"));
     CHECK(ToolRegistry::hash("tool_1234") != ToolRegistry::hash("tool_1243"));
 }
-
 TEST(reg_resize_preserves_tool_pointer) {
     ToolRegistry r;
     REQUIRE(r.add(std::make_unique<NamedTool>("stable")));
@@ -157,7 +123,6 @@ TEST(reg_resize_preserves_tool_pointer) {
         REQUIRE(r.add(std::make_unique<NamedTool>("tool_" + std::to_string(i))));
     CHECK(r.find("stable") == before);
 }
-
 TEST(reg_10000_tools) {
     ToolRegistry r;
     for (int i = 0; i < 10000; ++i)
@@ -169,7 +134,6 @@ TEST(reg_10000_tools) {
               << " load_factor=" << r.load_factor()
               << " max_chain=" << r.max_probe_length() << '\n';
 }
-
 TEST(reg_alternative_hash_measurement) {
     const std::size_t buckets = 16384;
     std::vector<std::size_t> counts(buckets, 0);
@@ -182,7 +146,6 @@ TEST(reg_alternative_hash_measurement) {
     CHECK(longest == 9000);
     std::cout << "weak s[0]+length hash max_chain=" << longest << '\n';
 }
-
 TEST(ws_normalizes_relative_paths) {
     TempDir d;
     Workspace ws(d.path());
@@ -193,7 +156,6 @@ TEST(ws_normalizes_relative_paths) {
     REQUIRE(ws.resolve("a/../b", &out, &reason));
     CHECK(out == ws.root() / "b");
 }
-
 TEST(ws_dot_resolves_to_root) {
     TempDir d;
     Workspace ws(d.path());
@@ -204,7 +166,6 @@ TEST(ws_dot_resolves_to_root) {
     REQUIRE(ws.resolve("a/..", &out, &reason));
     CHECK(out == ws.root());
 }
-
 TEST(ws_accepts_nonexistent_and_double_dot_name) {
     TempDir d;
     Workspace ws(d.path());
@@ -215,7 +176,6 @@ TEST(ws_accepts_nonexistent_and_double_dot_name) {
     REQUIRE(ws.resolve("my..notes.txt", &out, &reason));
     CHECK(out == ws.root() / "my..notes.txt");
 }
-
 TEST(ws_rejects_empty_absolute_and_nul_paths) {
     TempDir d;
     Workspace ws(d.path());
@@ -227,7 +187,6 @@ TEST(ws_rejects_empty_absolute_and_nul_paths) {
     CHECK(!ws.resolve(std::string("notes") + '\0' + "/x", &out, &reason));
     CHECK(!reason.empty());
 }
-
 TEST(ws_rejects_paths_that_climb_above_root_then_return) {
     TempDir d;
     Workspace ws(d.path());
@@ -237,7 +196,6 @@ TEST(ws_rejects_paths_that_climb_above_root_then_return) {
     CHECK(!ws.resolve("a/../../b", &out, &reason));
     CHECK(!ws.resolve("notes/../../ws/notes/todo.txt", &out, &reason));
 }
-
 TEST(calc_left_associative_subtraction_and_division) {
     double v = 0;
     std::string err;
@@ -246,7 +204,6 @@ TEST(calc_left_associative_subtraction_and_division) {
     REQUIRE(eval("100 / 10 / 5", &v, &err));
     CHECK(v == 2);
 }
-
 TEST(calc_parentheses) {
     double v = 0;
     std::string err;
@@ -255,7 +212,6 @@ TEST(calc_parentheses) {
     REQUIRE(eval("(2 + 3) * 4", &v, &err));
     CHECK(v == 20);
 }
-
 TEST(calc_negative_numbers_and_decimals) {
     double v = 0;
     std::string err;
@@ -266,14 +222,12 @@ TEST(calc_negative_numbers_and_decimals) {
     REQUIRE(eval("0.25 + 1.5", &v, &err));
     CHECK(std::fabs(v - 1.75) < 1e-12);
 }
-
 TEST(calc_division_by_parenthesized_zero) {
     double v = 0;
     std::string err;
     CHECK(!eval("1 / (2 - 2)", &v, &err));
     CHECK(err == "division by zero");
 }
-
 TEST(calc_long_expression_iterative) {
     std::string expression = "1";
     for (int i = 0; i < 20000; ++i) expression += "+1";
@@ -282,7 +236,6 @@ TEST(calc_long_expression_iterative) {
     REQUIRE(eval(expression, &v, &err));
     CHECK(v == 20001);
 }
-
 TEST(calc_deep_parentheses_iterative) {
     std::string expression(5000, '(');
     expression += "7";
@@ -292,15 +245,4 @@ TEST(calc_deep_parentheses_iterative) {
     REQUIRE(eval(expression, &v, &err));
     CHECK(v == 7);
 }
-
-                                                                           
-  
-                                                               
-                                                     
-                                                                               
-                                                                    
-                                                                         
-                                                                                
-                                                                        
-
 int main(int argc, char** argv) { return mt::run_all(argc, argv); }

@@ -1,30 +1,14 @@
-                           
-  
-         
-                                                              
-                                                     
-                                                         
-  
-                                                                           
-                            
-                                                                       
-                                                                     
-                                                    
-
 #include "harness/harness.h"
 #include "harness/transcript.h"
 #include "model/replay_client.h"
 #include "model/scripted_client.h"
 #include "tools/builtin_tools.h"
-
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
-
 namespace {
-
 class StdioInput : public InputSource {
 public:
     std::string read_line() override {
@@ -38,34 +22,28 @@ public:
 private:
     bool eof_ = false;
 };
-
 class StdioOutput : public OutputSink {
 public:
     void write(std::string_view text) override { std::cout << text << std::flush; }
 };
-
 std::string build_system_message(const ToolRegistry& registry) {
     return "You are MiniHarness, a helpful assistant.\n"
            "To use a tool, emit <|tool_call|>{\"id\":\"...\",\"name\":\"...\",\"arguments\":{...}}<|/tool_call|>\n"
            "Available tools:\n" +
            describe_tools(registry);
 }
-
 int usage(const char* argv0) {
     std::cerr << "usage: " << argv0
               << " [--script FILE | --replay FILE] [--save FILE] [--max-turns N]\n"
                  "       [--max-tool-steps N] [--workspace DIR] [--no-tools] [--tools]\n";
     return 2;
 }
-
-}              
-
+}
 int main(int argc, char* argv[]) {
     std::string script_path = "scripts/greeting.script";
     std::string replay_path, save_path, workspace_dir = "workspace";
     bool list_tools = false, no_tools = false;
     HarnessConfig config;
-
     try {
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -87,31 +65,24 @@ int main(int argc, char* argv[]) {
         std::cerr << "error: " << e.what() << "\n";
         return usage(argv[0]);
     }
-
     try {
-                                                                              
-                                            
         std::optional<ToolRegistry> registry;
         std::optional<ToolContext>  ctx;
         if (!no_tools || list_tools) {
             registry.emplace();
             register_builtin_tools(*registry);
         }
-
         if (list_tools) {
             std::cout << describe_tools(*registry);
             return 0;
         }
-
         if (!no_tools) {
             std::filesystem::create_directories(workspace_dir);
             ctx.emplace(Workspace(workspace_dir));
         }
-
         std::unique_ptr<ModelClient> model;
         if (!replay_path.empty()) model = std::make_unique<ReplayModelClient>(replay_path);
         else                      model = std::make_unique<ScriptedModelClient>(script_path);
-
         std::unique_ptr<Harness> harness;
         if (no_tools) {
             harness = std::make_unique<Harness>(std::move(model), config);
@@ -119,12 +90,10 @@ int main(int argc, char* argv[]) {
             config.system_message = build_system_message(*registry);
             harness = std::make_unique<Harness>(std::move(model), config, &*registry, &*ctx);
         }
-
         StdioInput in;
         StdioOutput out;
         StopReason reason = harness->run(in, out);
         std::cout << "[conversation ended: " << reason.detail << "]\n";
-
         if (!save_path.empty()) {
             if (save_transcript(harness->conversation(), save_path))
                 std::cout << "[transcript saved to " << save_path << "]\n";

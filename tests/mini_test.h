@@ -1,26 +1,3 @@
-                    
-  
-                                                    
-  
-                              
-                        
-                                                                                         
-                                                                                         
-                                            
-      
-  
-                                                                        
-  
-                                                                             
-                                                                          
-                                      
-  
-                                                                                 
-                                                             
-                                   
-                                                                        
-                                                            
-
 #pragma once
 #include <cstdio>
 #include <exception>
@@ -29,44 +6,35 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
 namespace mt {
-
 struct TestCase {
     const char*           name;
     std::function<void()> fn;
 };
-
 inline std::vector<TestCase>& registry() {
     static std::vector<TestCase> tests;
     return tests;
 }
-
 struct Registrar {
     Registrar(const char* name, std::function<void()> fn) {
         registry().push_back({name, std::move(fn)});
     }
 };
-
-struct AbortTest {};                                                 
-
+struct AbortTest {};
 inline int& failures_in_current() {
     static int n = 0;
     return n;
 }
-
 inline void report(const char* file, int line, const std::string& what) {
     ++failures_in_current();
     std::printf("    %s:%d: failed: %s\n", file, line, what.c_str());
 }
-
 template <typename A, typename B>
 std::string describe_eq(const char* ea, const char* eb, const A& a, const B& b) {
     std::ostringstream os;
     os << ea << " == " << eb << "\n        left:  " << a << "\n        right: " << b;
     return os.str();
 }
-
 inline int run_all(int argc, char** argv) {
     const std::string filter = argc > 1 ? argv[1] : "";
     if (filter == "--list") {
@@ -74,9 +42,8 @@ inline int run_all(int argc, char** argv) {
         return 0;
     }
     const bool exact = !filter.empty() && filter[0] == '=';
-    std::map<std::string, std::pair<int, int>> by_area;                             
+    std::map<std::string, std::pair<int, int>> by_area;
     int passed = 0, total = 0;
-
     for (const TestCase& t : registry()) {
         const std::string name = t.name;
         if (exact ? name != filter.substr(1)
@@ -100,13 +67,11 @@ inline int run_all(int argc, char** argv) {
         const bool ok = failures_in_current() == 0;
         std::printf("[%s] %s\n", ok ? "PASS" : "FAIL", t.name);
         std::fflush(stdout);
-
         const std::string area = name.substr(0, name.find('_'));
         auto& slot = by_area[area];
         slot.second += 1;
         if (ok) { ++passed; slot.first += 1; }
     }
-
     std::printf("\n---- summary ----\n");
     for (const auto& kv : by_area)
         std::printf("  %-12s %3d / %3d\n", kv.first.c_str(), kv.second.first, kv.second.second);
@@ -117,22 +82,17 @@ inline int run_all(int argc, char** argv) {
     }
     return passed == total ? 0 : 1;
 }
-
-}                 
-
+}
 #define MT_CAT2(a, b) a##b
 #define MT_CAT(a, b) MT_CAT2(a, b)
-
 #define TEST(name)                                                    \
     static void name();                                               \
     static ::mt::Registrar MT_CAT(mt_reg_, name)(#name, &name);       \
     static void name()
-
 #define CHECK(cond)                                                   \
     do {                                                              \
         if (!(cond)) ::mt::report(__FILE__, __LINE__, #cond);         \
     } while (0)
-
 #define REQUIRE(cond)                                                 \
     do {                                                              \
         if (!(cond)) {                                                \
@@ -140,7 +100,6 @@ inline int run_all(int argc, char** argv) {
             throw ::mt::AbortTest{};                                  \
         }                                                             \
     } while (0)
-
 #define CHECK_EQ(a, b)                                                \
     do {                                                              \
         const auto& mt_a_ = (a);                                      \
@@ -149,8 +108,6 @@ inline int run_all(int argc, char** argv) {
             ::mt::report(__FILE__, __LINE__,                          \
                          ::mt::describe_eq(#a, #b, mt_a_, mt_b_));    \
     } while (0)
-
-                                                                     
 #define CHECK_THROWS(expr, ex)                                        \
     do {                                                              \
         bool mt_threw_ = false;                                       \

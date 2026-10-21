@@ -1,21 +1,13 @@
-                                      
-
 #include "harness/harness.h"
 #include "core/sentinel_scanner.h"
-
 #include <exception>
 #include <stdexcept>
 #include <utility>
 #include <vector>
-
 namespace {
-
-                                                                             
-                                                                   
 class StreamingSink : public TokenSink {
 public:
     explicit StreamingSink(OutputSink& out) : out_(out), scanner_(std::string(kEndSentinel)) {}
-
     void on_chunk(std::string_view chunk) override {
         if (stopped_) return;
         auto res = scanner_.feed(chunk);
@@ -23,24 +15,20 @@ public:
         text_ += res.safe_text;
         if (res.sentinel_found) stopped_ = true;
     }
-
     void on_complete() override {
         if (stopped_) return;
         auto res = scanner_.flush();
         out_.write(res.safe_text);
         text_ += res.safe_text;
     }
-
     bool stopped() const { return stopped_; }
     const std::string& text() const { return text_; }
-
 private:
     OutputSink&     out_;
     SentinelScanner scanner_;
     bool            stopped_ = false;
     std::string     text_;
 };
-
 std::string preview(const std::string& s, std::size_t limit = 60) {
     std::string out;
     for (char c : s) {
@@ -51,9 +39,7 @@ std::string preview(const std::string& s, std::size_t limit = 60) {
     }
     return out;
 }
-
-}              
-
+}
 Harness::Harness(std::unique_ptr<ModelClient> model, HarnessConfig cfg,
                  ToolRegistry* tools, ToolContext* ctx)
     : model_(std::move(model)), cfg_(std::move(cfg)), ctx_(ctx) {
@@ -62,7 +48,6 @@ Harness::Harness(std::unique_ptr<ModelClient> model, HarnessConfig cfg,
     if (tools) dispatcher_.emplace(*tools);
     if (!cfg_.system_message.empty()) conv_.append(Message(Role::System, cfg_.system_message));
 }
-
 void Harness::print_call(OutputSink& out, const DispatchedCall& call) const {
     std::string line = "[tool ";
     line += call.tool_name.empty() ? "?" : call.tool_name;
@@ -72,20 +57,14 @@ void Harness::print_call(OutputSink& out, const DispatchedCall& call) const {
     line += "\n";
     out.write(line);
 }
-
 StopReason Harness::run(InputSource& in, OutputSink& out) {
     int turns = 0;
-
     while (turns < cfg_.max_turns) {
         out.write("you> ");
         std::string user_text = in.read_line();
         if (in.is_eof()) return {StopReason::Kind::UserExit, "EOF detected"};
         if (user_text.empty()) continue;
-
         conv_.append(Message(Role::User, user_text));
-
-                                                                           
-                                                                             
         for (int step = 0;; ++step) {
             out.write("assistant> ");
             StreamingSink sink(out);
@@ -96,21 +75,15 @@ StopReason Harness::run(InputSource& in, OutputSink& out) {
                 return {StopReason::Kind::ClientError, e.what()};
             }
             out.write("\n");
-
-                                                                          
-                                                                      
             std::string reply = sink.text();
             if (sink.stopped()) reply += kEndSentinel;
             conv_.append(Message(Role::Assistant, reply));
-
             if (sink.stopped()) return {StopReason::Kind::Sentinel, "Stop sentinel detected"};
             if (!dispatcher_ || !ToolDispatcher::has_tool_call(reply)) break;
-
             if (step >= cfg_.max_tool_steps) {
                 out.write("[tool step limit reached; returning to user]\n");
                 break;
             }
-
             std::vector<DispatchedCall> calls;
             std::vector<Message> results =
                 dispatcher_->handle(conv_.at(conv_.size() - 1), *ctx_, &calls);

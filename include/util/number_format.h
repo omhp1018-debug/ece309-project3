@@ -1,29 +1,11 @@
-                               
-  
-                                                                    
-                                                                             
-  
-                                  
-                                 
-                                   
-                                   
-                                     
-                                                  
-  
-                                                                           
-                                                                         
-                                                                         
-                                                                         
-
 #pragma once
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
-
 inline std::string format_number(double v) {
     if (!std::isfinite(v)) return "null";
-    if (v == 0.0) return "0";                     
+    if (v == 0.0) return "0";
     if (std::fabs(v) < 9007199254740992.0 && v == std::floor(v)) {
         char buf[32];
         std::snprintf(buf, sizeof buf, "%.0f", v);

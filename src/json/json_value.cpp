@@ -1,120 +1,84 @@
-                                                                         
-  
-                                                                    
-                                                                      
-                                                                              
-
 #include "json/json_value.h"
 #include "util/number_format.h"
-
 #include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <stdexcept>
 #include <utility>
-
-                                                                              
-               
-                                                                              
-
 JsonValue::JsonValue() = default;
 JsonValue::JsonValue(const JsonValue&) = default;
 JsonValue& JsonValue::operator=(const JsonValue&) = default;
 JsonValue::JsonValue(JsonValue&&) noexcept = default;
 JsonValue& JsonValue::operator=(JsonValue&&) noexcept = default;
 JsonValue::~JsonValue() = default;
-
 JsonValue JsonValue::null() { return JsonValue(); }
-
 JsonValue JsonValue::boolean(bool b) {
     JsonValue v;
     v.type_ = Type::Bool;
     v.bool_ = b;
     return v;
 }
-
 JsonValue JsonValue::number(double d) {
     JsonValue v;
     v.type_ = Type::Number;
     v.number_ = d;
     return v;
 }
-
 JsonValue JsonValue::string(std::string s) {
     JsonValue v;
     v.type_ = Type::String;
     v.string_ = std::move(s);
     return v;
 }
-
 JsonValue JsonValue::array() {
     JsonValue v;
     v.type_ = Type::Array;
     return v;
 }
-
 JsonValue JsonValue::object() {
     JsonValue v;
     v.type_ = Type::Object;
     return v;
 }
-
-                                                                              
-             
-                                                                              
-
 JsonValue::Type JsonValue::type() const noexcept { return type_; }
-
 bool JsonValue::as_bool() const {
     if (type_ != Type::Bool) throw std::logic_error("JsonValue: not a bool");
     return bool_;
 }
-
 double JsonValue::as_number() const {
     if (type_ != Type::Number) throw std::logic_error("JsonValue: not a number");
     return number_;
 }
-
 const std::string& JsonValue::as_string() const {
     if (type_ != Type::String) throw std::logic_error("JsonValue: not a string");
     return string_;
 }
-
 std::size_t JsonValue::size() const {
     if (type_ != Type::Array && type_ != Type::Object)
         throw std::logic_error("JsonValue: size() on a non-container");
     return items_.size();
 }
-
 const JsonValue& JsonValue::operator[](std::size_t i) const {
     if (type_ != Type::Array && type_ != Type::Object)
         throw std::logic_error("JsonValue: operator[] on a non-container");
     if (i >= items_.size()) throw std::out_of_range("JsonValue: index out of range");
     return items_[i];
 }
-
 const std::string& JsonValue::key_at(std::size_t i) const {
     if (type_ != Type::Object) throw std::logic_error("JsonValue: key_at() on a non-object");
     if (i >= keys_.size()) throw std::out_of_range("JsonValue: index out of range");
     return keys_[i];
 }
-
 const JsonValue* JsonValue::find(std::string_view key) const {
     if (type_ != Type::Object) return nullptr;
     for (std::size_t i = 0; i < keys_.size(); ++i)
         if (keys_[i] == key) return &items_[i];
     return nullptr;
 }
-
-                                                                              
-           
-                                                                              
-
 void JsonValue::push_back(JsonValue v) {
     if (type_ != Type::Array) throw std::logic_error("JsonValue: push_back() on a non-array");
     items_.push_back(std::move(v));
 }
-
 void JsonValue::set(std::string key, JsonValue v) {
     if (type_ != Type::Object) throw std::logic_error("JsonValue: set() on a non-object");
     for (std::size_t i = 0; i < keys_.size(); ++i) {
@@ -126,7 +90,6 @@ void JsonValue::set(std::string key, JsonValue v) {
     keys_.push_back(std::move(key));
     items_.push_back(std::move(v));
 }
-
 bool JsonValue::operator==(const JsonValue& o) const {
     if (type_ != o.type_) return false;
     switch (type_) {
@@ -139,13 +102,7 @@ bool JsonValue::operator==(const JsonValue& o) const {
     }
     return false;
 }
-
-                                                                              
-                
-                                                                              
-
 namespace {
-
 void dump_string(const std::string& s, std::string& out) {
     static const char* hex = "0123456789abcdef";
     out += '"';
@@ -170,11 +127,7 @@ void dump_string(const std::string& s, std::string& out) {
     }
     out += '"';
 }
-
-}              
-
-                                                                            
-                                   
+}
 static void dump_into(const JsonValue& v, std::string& out) {
     switch (v.type()) {
         case JsonValue::Type::Null:   out += "null"; break;
@@ -201,24 +154,16 @@ static void dump_into(const JsonValue& v, std::string& out) {
             break;
     }
 }
-
 std::string JsonValue::dump() const {
     std::string out;
     dump_into(*this, out);
     return out;
 }
-
-                                                                              
-          
-                                                                              
-
 namespace {
-
 class Parser {
 public:
     Parser(std::string_view text, std::size_t max_depth)
         : s_(text), max_depth_(max_depth) {}
-
     bool parse_document(JsonValue* out) {
         skip_ws();
         if (!parse_value(out, 0)) return false;
@@ -226,24 +171,19 @@ public:
         if (pos_ != s_.size()) return fail("unexpected trailing characters");
         return true;
     }
-
     const std::string& error() const { return error_; }
-
 private:
     std::string_view s_;
     std::size_t      pos_ = 0;
     std::size_t      max_depth_;
     std::string      error_;
-
     bool fail(const std::string& what) {
         if (error_.empty())
             error_ = "at offset " + std::to_string(pos_) + ": " + what;
         return false;
     }
-
     bool at_end() const { return pos_ >= s_.size(); }
     char peek() const { return s_[pos_]; }
-
     void skip_ws() {
         while (!at_end()) {
             char c = peek();
@@ -251,14 +191,12 @@ private:
             else break;
         }
     }
-
     bool literal(std::string_view word) {
         if (s_.substr(pos_, word.size()) != word)
             return fail("invalid literal");
         pos_ += word.size();
         return true;
     }
-
     bool parse_value(JsonValue* out, std::size_t depth) {
         if (at_end()) return fail("unexpected end of input, expected a value");
         switch (peek()) {
@@ -278,10 +216,9 @@ private:
                 return fail(std::string("unexpected character '") + peek() + "'");
         }
     }
-
     bool parse_array(JsonValue* out, std::size_t depth) {
         if (depth > max_depth_) return fail("maximum nesting depth exceeded");
-        ++pos_;        
+        ++pos_;
         JsonValue arr = JsonValue::array();
         skip_ws();
         if (!at_end() && peek() == ']') { ++pos_; *out = std::move(arr); return true; }
@@ -299,10 +236,9 @@ private:
         *out = std::move(arr);
         return true;
     }
-
     bool parse_object(JsonValue* out, std::size_t depth) {
         if (depth > max_depth_) return fail("maximum nesting depth exceeded");
-        ++pos_;        
+        ++pos_;
         JsonValue obj = JsonValue::object();
         skip_ws();
         if (!at_end() && peek() == '}') { ++pos_; *out = std::move(obj); return true; }
@@ -328,14 +264,12 @@ private:
         *out = std::move(obj);
         return true;
     }
-
     static int hex_digit(char c) {
         if (c >= '0' && c <= '9') return c - '0';
         if (c >= 'a' && c <= 'f') return c - 'a' + 10;
         if (c >= 'A' && c <= 'F') return c - 'A' + 10;
         return -1;
     }
-
     bool read_hex4(unsigned* out) {
         if (pos_ + 4 > s_.size()) return fail("truncated \\u escape");
         unsigned v = 0;
@@ -348,7 +282,6 @@ private:
         *out = v;
         return true;
     }
-
     static void append_utf8(unsigned cp, std::string* s) {
         if (cp < 0x80) {
             *s += static_cast<char>(cp);
@@ -366,9 +299,8 @@ private:
             *s += static_cast<char>(0x80 | (cp & 0x3F));
         }
     }
-
     bool parse_string(std::string* out) {
-        ++pos_;                  
+        ++pos_;
         std::string s;
         for (;;) {
             if (at_end()) return fail("unterminated string");
@@ -376,8 +308,7 @@ private:
             if (c == '"') { ++pos_; break; }
             if (c < 0x20) return fail("raw control character in string");
             if (c != '\\') { s += static_cast<char>(c); ++pos_; continue; }
-
-            ++pos_;              
+            ++pos_;
             if (at_end()) return fail("unterminated escape");
             char e = s_[pos_++];
             switch (e) {
@@ -393,7 +324,6 @@ private:
                     unsigned cp = 0;
                     if (!read_hex4(&cp)) return false;
                     if (cp >= 0xD800 && cp <= 0xDBFF) {
-                                                                              
                         if (pos_ + 2 > s_.size() || s_[pos_] != '\\' || s_[pos_ + 1] != 'u')
                             return fail("unpaired high surrogate");
                         pos_ += 2;
@@ -415,9 +345,7 @@ private:
         *out = std::move(s);
         return true;
     }
-
     static bool is_digit(char c) { return c >= '0' && c <= '9'; }
-
     bool parse_number(JsonValue* out) {
         const std::size_t start = pos_;
         if (peek() == '-') ++pos_;
@@ -440,8 +368,6 @@ private:
             if (at_end() || !is_digit(peek())) return fail("expected digit in exponent");
             while (!at_end() && is_digit(peek())) ++pos_;
         }
-                                                                            
-                                                             
         std::string token(s_.substr(start, pos_ - start));
         double d = std::strtod(token.c_str(), nullptr);
         if (!std::isfinite(d)) {
@@ -452,9 +378,7 @@ private:
         return true;
     }
 };
-
-}              
-
+}
 JsonValue JsonValue::parse(std::string_view text, std::string* error_out,
                            std::size_t max_depth) {
     Parser p(text, max_depth);

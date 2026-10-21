@@ -1,21 +1,11 @@
-                                                             
-  
-                                                                   
-                                                                      
-                                                                       
-
 #include "tools/calculator.h"
-
 #include <vector>
-
 namespace {
-
 int precedence(CalcToken::Kind kind) {
     if (kind == CalcToken::Kind::Times || kind == CalcToken::Kind::Divide) return 2;
     if (kind == CalcToken::Kind::Plus || kind == CalcToken::Kind::Minus) return 1;
     return 0;
 }
-
 bool apply(std::vector<double>& values, std::vector<CalcToken::Kind>& ops,
            std::string* error) {
     if (ops.empty() || values.size() < 2) {
@@ -24,6 +14,7 @@ bool apply(std::vector<double>& values, std::vector<CalcToken::Kind>& ops,
     }
     const CalcToken::Kind op = ops.back();
     ops.pop_back();
+    // Pop the right operand first to preserve left op right.
     const double right = values.back();
     values.pop_back();
     const double left = values.back();
@@ -47,9 +38,7 @@ bool apply(std::vector<double>& values, std::vector<CalcToken::Kind>& ops,
     values.push_back(result);
     return true;
 }
-
-}              
-
+}
 bool calc_evaluate(const std::vector<CalcToken>& tokens, double* out,
                    std::string* error) {
     if (error == nullptr || out == nullptr) return false;
@@ -58,12 +47,10 @@ bool calc_evaluate(const std::vector<CalcToken>& tokens, double* out,
         *error = "empty expression";
         return false;
     }
-
     std::vector<double> values;
     std::vector<CalcToken::Kind> ops;
     values.reserve(tokens.size());
     ops.reserve(tokens.size());
-
     for (const CalcToken& token : tokens) {
         if (token.kind == CalcToken::Kind::Number) {
             values.push_back(token.value);
@@ -79,6 +66,7 @@ bool calc_evaluate(const std::vector<CalcToken>& tokens, double* out,
             }
             ops.pop_back();
         } else {
+            // Reducing equal precedence here makes +, -, *, and / left-associative.
             while (!ops.empty() && ops.back() != CalcToken::Kind::LParen &&
                    precedence(ops.back()) >= precedence(token.kind)) {
                 if (!apply(values, ops, error)) return false;
@@ -86,7 +74,6 @@ bool calc_evaluate(const std::vector<CalcToken>& tokens, double* out,
             ops.push_back(token.kind);
         }
     }
-
     while (!ops.empty()) {
         if (ops.back() == CalcToken::Kind::LParen) {
             *error = "unmatched '('";

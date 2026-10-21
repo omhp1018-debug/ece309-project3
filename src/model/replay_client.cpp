@@ -1,14 +1,6 @@
-                                          
-  
-                                                                           
-                                                                    
-                                                                   
-
 #include "model/replay_client.h"
 #include "harness/transcript.h"
-
 #include <stdexcept>
-
 ReplayModelClient::ReplayModelClient(const std::string& transcript_path) {
     Conversation conv;
     std::string error;
@@ -17,13 +9,12 @@ ReplayModelClient::ReplayModelClient(const std::string& transcript_path) {
     for (const Message& m : conv)
         if (m.role() == Role::Assistant) assistant_replies_.push_back(m.content());
 }
-
 void ReplayModelClient::generate(const Conversation&         , TokenSink& sink) {
     std::string reply;
     if (current_turn_ < assistant_replies_.size()) {
         reply = assistant_replies_[current_turn_++];
     } else {
-        reply = "<|end_conversation|>";                                       
+        reply = "<|end_conversation|>";
     }
     sink.on_chunk(reply);
     sink.on_complete();

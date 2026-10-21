@@ -1,34 +1,19 @@
-                         
-  
-                                                                 
-                                                                             
-                                                            
-
 #pragma once
 #include <string>
 #include <string_view>
 #include <utility>
-
 enum class Role { System, User, Assistant, Tool };
-
 class Message {
 public:
-                                                                             
-                                                               
     Message() : role_(Role::System) {}
-
     Message(Role role, std::string content)
         : role_(role), content_(std::move(content)) {}
-
     Role               role()    const noexcept { return role_; }
     const std::string& content() const noexcept { return content_; }
-
 private:
     Role        role_;
     std::string content_;
 };
-
-                                                                            
 inline const char* role_to_string(Role r) noexcept {
     switch (r) {
         case Role::System:    return "system";
@@ -38,9 +23,6 @@ inline const char* role_to_string(Role r) noexcept {
     }
     return "system";
 }
-
-                                                                         
-                    
 inline bool role_from_string(std::string_view s, Role* out) noexcept {
     if (s == "system")    { *out = Role::System;    return true; }
     if (s == "user")      { *out = Role::User;      return true; }

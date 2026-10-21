@@ -1,16 +1,12 @@
 #include "core/conversation.h"
-
 #include <stdexcept>
 #include <utility>
-
 Conversation::~Conversation() { delete[] data_; }
-
 Conversation::Conversation(const Conversation& other)
     : data_(other.capacity_ ? new Message[other.capacity_] : nullptr),
       size_(other.size_), capacity_(other.capacity_) {
     for (std::size_t i = 0; i < size_; ++i) data_[i] = other.data_[i];
 }
-
 Conversation& Conversation::operator=(const Conversation& other) {
     if (this == &other) return *this;
     Conversation copy(other);
@@ -19,14 +15,12 @@ Conversation& Conversation::operator=(const Conversation& other) {
     std::swap(capacity_, copy.capacity_);
     return *this;
 }
-
 Conversation::Conversation(Conversation&& other) noexcept
     : data_(other.data_), size_(other.size_), capacity_(other.capacity_) {
     other.data_ = nullptr;
     other.size_ = 0;
     other.capacity_ = 0;
 }
-
 Conversation& Conversation::operator=(Conversation&& other) noexcept {
     if (this == &other) return *this;
     delete[] data_;
@@ -38,7 +32,6 @@ Conversation& Conversation::operator=(Conversation&& other) noexcept {
     other.capacity_ = 0;
     return *this;
 }
-
 void Conversation::append(Message m) {
     if (size_ == capacity_) {
         const std::size_t next_capacity = capacity_ == 0 ? 1 : capacity_ * 2;
@@ -50,17 +43,12 @@ void Conversation::append(Message m) {
     }
     data_[size_++] = std::move(m);
 }
-
 std::size_t Conversation::size() const noexcept { return size_; }
-
 const Message& Conversation::at(std::size_t i) const {
     if (i >= size_) throw std::out_of_range("Conversation index out of range");
     return data_[i];
 }
-
 const Message* Conversation::begin() const noexcept { return data_; }
-
 const Message* Conversation::end() const noexcept {
     return data_ == nullptr ? nullptr : data_ + size_;
 }
-

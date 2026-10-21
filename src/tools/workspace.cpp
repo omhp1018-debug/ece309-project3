@@ -1,16 +1,6 @@
-                                                       
-  
-                                                                     
-                                                                    
-                                                               
-                          
-
 #include "tools/workspace.h"
-
 #include <string>
-
 namespace fs = std::filesystem;
-
 bool Workspace::resolve(std::string_view user_path, fs::path* out,
                         std::string* reason) const {
     if (reason == nullptr || out == nullptr) return false;
@@ -29,6 +19,7 @@ bool Workspace::resolve(std::string_view user_path, fs::path* out,
             *reason = "absolute paths are not allowed";
             return false;
         }
+        // Normalize first so paths that leave and re-enter root are rejected.
         const fs::path normalized = p.lexically_normal();
         if (normalized.begin() != normalized.end() && *normalized.begin() == fs::path("..")) {
             *reason = "path escapes workspace";

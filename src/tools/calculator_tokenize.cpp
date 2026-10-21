@@ -1,34 +1,19 @@
-                                                
-  
-                                                                     
-                                                                            
-                                                                    
-
 #include "tools/calculator.h"
-
 #include <cstdlib>
 #include <string>
-
 namespace {
-
 bool is_digit(char c) { return c >= '0' && c <= '9'; }
-
 std::string at(std::size_t pos) { return " at position " + std::to_string(pos); }
-
-}              
-
+}
 bool calc_tokenize(std::string_view s, std::vector<CalcToken>* out, std::string* error) {
     out->clear();
-    bool expect_operand = true;                          
-    int  open_parens = 0;                                   
+    bool expect_operand = true;
+    int  open_parens = 0;
     std::size_t i = 0;
-
     while (i < s.size()) {
         char c = s[i];
         if (c == ' ' || c == '\t') { ++i; continue; }
-
         if (expect_operand) {
-                                                                  
             bool negative = false;
             std::size_t start = i;
             if (c == '-' && i + 1 < s.size() && is_digit(s[i + 1])) {
@@ -64,8 +49,6 @@ bool calc_tokenize(std::string_view s, std::vector<CalcToken>* out, std::string*
             *error = "expected a number or '('" + at(start);
             return false;
         }
-
-                                    
         CalcToken t;
         switch (c) {
             case '+': t.kind = CalcToken::Kind::Plus;   break;
@@ -80,7 +63,7 @@ bool calc_tokenize(std::string_view s, std::vector<CalcToken>* out, std::string*
                 --open_parens;
                 out->push_back({CalcToken::Kind::RParen, 0.0});
                 ++i;
-                continue;                                           
+                continue;
             default:
                 *error = std::string("unexpected character '") + c + "'" + at(i);
                 return false;
@@ -89,7 +72,6 @@ bool calc_tokenize(std::string_view s, std::vector<CalcToken>* out, std::string*
         expect_operand = true;
         ++i;
     }
-
     if (out->empty()) {
         *error = "empty expression";
         return false;

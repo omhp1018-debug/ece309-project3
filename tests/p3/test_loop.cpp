@@ -1,16 +1,5 @@
-                                     
-  
-                                                                              
-                                                                           
-                                                                          
-                                                                       
-  
-                                          
-                                                                                
-
 #include "../mini_test.h"
 #include "../test_helpers.h"
-
 #include "harness/harness.h"
 #include "harness/tool_dispatcher.h"
 #include "harness/transcript.h"
@@ -22,15 +11,12 @@
 #include "tools/file_tools.h"
 #include "tools/tool_registry.h"
 #include "tools/workspace.h"
-
 #include <cstdio>
 #include <memory>
 #include <random>
 #include <string>
 #include <vector>
-
 namespace fs = std::filesystem;
-
 namespace {
 struct LoopFixture {
     TempDir      dir;
@@ -41,11 +27,10 @@ struct LoopFixture {
         write_text(dir.path() / "todo.txt", "- buy milk\n");
     }
 };
-}              
-
+}
 TEST(loop_model_tool_model_without_user_turn) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     int model_calls = 0;
     std::vector<Role> seen;
     auto model = std::make_unique<ListModel>(
@@ -60,10 +45,10 @@ TEST(loop_model_tool_model_without_user_turn) {
     StopReason why = h.run(in, out);
     CHECK(why.kind == StopReason::Kind::UserExit);
     CHECK(model_calls == 2);
-    CHECK(in.reads == 2);                                                 
+    CHECK(in.reads == 2);
     REQUIRE(seen.size() == 2);
     CHECK(seen[0] == Role::User);
-    CHECK(seen[1] == Role::Tool);                                                 
+    CHECK(seen[1] == Role::Tool);
     const Conversation& c = h.conversation();
     REQUIRE(c.size() == 4);
     CHECK(c.at(0).role() == Role::User);
@@ -73,10 +58,9 @@ TEST(loop_model_tool_model_without_user_turn) {
     CHECK(field(result_json(c.at(2)), "content").as_string() == "- buy milk\n");
     CHECK(out.data.find("[tool read_file c1 -> ok]") != std::string::npos);
 }
-
 TEST(loop_escape_attempt_is_an_error_not_a_crash) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     int model_calls = 0;
     auto model = std::make_unique<ListModel>(
         std::vector<std::string>{
@@ -91,15 +75,14 @@ TEST(loop_escape_attempt_is_an_error_not_a_crash) {
     h.run(in, out);
     CHECK(model_calls == 3);
     const Conversation& c = h.conversation();
-    REQUIRE(c.size() == 6);                                                   
+    REQUIRE(c.size() == 6);
     CHECK(field(result_json(c.at(2)), "ok").as_bool() == false);
     CHECK(field(result_json(c.at(4)), "ok").as_bool() == true);
     CHECK(out.data.find("[tool read_file e1 -> error]") != std::string::npos);
 }
-
 TEST(loop_chained_tool_rounds) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     int model_calls = 0;
     auto model = std::make_unique<ListModel>(
         std::vector<std::string>{
@@ -115,15 +98,14 @@ TEST(loop_chained_tool_rounds) {
     CHECK(h.run(in, out).kind == StopReason::Kind::Sentinel);
     CHECK(model_calls == 4);
     CHECK(in.reads == 1);
-    REQUIRE(h.conversation().size() == 8);                                 
+    REQUIRE(h.conversation().size() == 8);
     CHECK(field(result_json(h.conversation().at(2)), "ok").as_bool());
     CHECK(field(result_json(h.conversation().at(4)), "content").as_string() == "7");
     CHECK(field(result_json(h.conversation().at(6)), "content").as_string() == "42");
 }
-
 TEST(loop_tool_step_limit) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     std::vector<std::string> replies;
     for (int i = 0; i < 10; ++i) replies.push_back(call("r", "calculator", R"({"expression":"1"})"));
     replies.push_back("done<|end_conversation|>");
@@ -136,9 +118,8 @@ TEST(loop_tool_step_limit) {
     h.run(in, out);
     CHECK(out.data.find("tool step limit") != std::string::npos);
     CHECK(model_calls >= 4);
-    CHECK(in.reads >= 2);                                   
+    CHECK(in.reads >= 2);
 }
-
 TEST(loop_without_registry_is_p2_behavior) {
     int model_calls = 0;
     auto model = std::make_unique<ListModel>(
@@ -151,10 +132,9 @@ TEST(loop_without_registry_is_p2_behavior) {
     CHECK(model_calls == 1);
     CHECK(h.conversation().size() == 2);
 }
-
 TEST(loop_sentinel_wins_over_tool_call) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     int model_calls = 0;
     auto model = std::make_unique<ListModel>(
         std::vector<std::string>{
@@ -167,10 +147,9 @@ TEST(loop_sentinel_wins_over_tool_call) {
     CHECK(!fs::exists(f.dir.path() / "late.txt"));
     CHECK(model_calls == 1);
 }
-
 TEST(loop_client_error) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     LinesInput in({"hi", "again"});
     StringOutput out;
     Harness h(std::make_unique<ListModel>(std::vector<std::string>{"only one"}), HarnessConfig{},
@@ -179,10 +158,9 @@ TEST(loop_client_error) {
     CHECK(why.kind == StopReason::Kind::ClientError);
     CHECK(why.detail.find("exhausted") != std::string::npos);
 }
-
 TEST(loop_system_message_lists_tools) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     HarnessConfig cfg;
     cfg.system_message = "Tools:\n" + describe_tools(f.registry);
     Harness h(std::make_unique<ListModel>(std::vector<std::string>{}), cfg, &f.registry, &f.ctx);
@@ -192,10 +170,9 @@ TEST(loop_system_message_lists_tools) {
     for (const char* n : {"read_file", "write_file", "list_dir", "calculator"})
         CHECK(sys.content().find(n) != std::string::npos);
 }
-
 TEST(loop_transcript_round_trip_with_tools) {
     LoopFixture f;
-    REQUIRE(f.registry.find("calculator") != nullptr);                             
+    REQUIRE(f.registry.find("calculator") != nullptr);
     const std::string path = (f.dir.path() / "t.txt").string();
     std::vector<std::string> replies = {
         "Reading." + call("c1", "read_file", R"({"path":"todo.txt"})"),
@@ -221,8 +198,6 @@ TEST(loop_transcript_round_trip_with_tools) {
         CHECK(loaded.at(i).role() == first.at(i).role());
         CHECK(loaded.at(i).content() == first.at(i).content());
     }
-                                                                     
-                                        
     LinesInput in2({"todo?", "thanks"});
     StringOutput out2;
     HarnessConfig cfg2;
@@ -233,5 +208,4 @@ TEST(loop_transcript_round_trip_with_tools) {
     for (std::size_t i = 0; i < first.size(); ++i)
         CHECK(h2.conversation().at(i).content() == first.at(i).content());
 }
-
 int main(int argc, char** argv) { return mt::run_all(argc, argv); }
