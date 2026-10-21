@@ -125,22 +125,28 @@ TEST(reg_resize_preserves_tool_pointer) {
 }
 TEST(reg_10000_tools) {
     ToolRegistry r;
-    for (int i = 0; i < 10000; ++i)
-        REQUIRE(r.add(std::make_unique<NamedTool>("tool_" + std::to_string(i))));
+    Tool* first = nullptr;
+    for (int i = 0; i < 10000; ++i) {
+        const std::string name = "tool_" + std::to_string(i);
+        auto tool = std::make_unique<NamedTool>(name);
+        if (i == 0) first = tool.get();
+        REQUIRE(r.add(std::move(tool)));
+        CHECK(r.load_factor() <= 1.0);
+    }
     CHECK(r.size() == 10000);
-    CHECK(r.load_factor() <= 1.0);
+    CHECK(r.find("tool_0") == first);
+    for (int i = 0; i < 10000; ++i)
+        CHECK(r.find("tool_" + std::to_string(i)) != nullptr);
     CHECK(r.max_probe_length() <= 64);
     std::cout << "10,000 tools: buckets=" << r.bucket_count()
               << " load_factor=" << r.load_factor()
               << " max_chain=" << r.max_probe_length() << '\n';
-}
-TEST(reg_alternative_hash_measurement) {
-    const std::size_t buckets = 16384;
-    std::vector<std::size_t> counts(buckets, 0);
+
+    std::vector<std::size_t> counts(r.bucket_count(), 0);
     for (int i = 0; i < 10000; ++i) {
         const std::string name = "tool_" + std::to_string(i);
         const std::size_t weak = static_cast<unsigned char>(name[0]) + name.size();
-        ++counts[weak % buckets];
+        ++counts[weak % r.bucket_count()];
     }
     const std::size_t longest = *std::max_element(counts.begin(), counts.end());
     CHECK(longest == 9000);
